@@ -8,9 +8,8 @@ on:
       - ".github/workflows/**"
   workflow_dispatch:
 
-# wichtig: Schreibrecht für Releases/Tags
 permissions:
-  contents: write
+  contents: write   # für Releases
 
 jobs:
   build:
@@ -44,61 +43,53 @@ jobs:
         working-directory: iosevka-src
         run: |
           npm install
-          # baue NUR deinen Plan
+          # baue NUR deinen Plan (Name ggf. anpassen!)
           npm run build -- contents::IoskeleyMono
 
-      - name: Verify build output
+      # --- WICHTIG: nicht auf feste Ordnernamen verlassen ---
+      - name: Package fonts (zip TTF & WOFF2 found in dist)
         run: |
-          test -d "iosevka-src/dist/IoskeleyMono" || (echo "Output missing" && exit 1)
-          ls -la iosevka-src/dist/IoskeleyMono
+          set -euo pipefail
+          mkdir -p out
 
-      # Zips robust erzeugen (nur vorhandene Ordner packen)
-      - name: Package font files
-        run: |
-          set -e
-          cd iosevka-src/dist/IoskeleyMono
-          mkdir -p ../../../out
+          echo "Dist tree:"
+          find iosevka-src/dist -maxdepth 3 -type d -print || true
 
-          pack() {
-            local out="$1"; shift
-            local any=0
-            for d in "$@"; do
-              if [ -d "$d" ]; then
-                any=1
-              fi
-            done
-            if [ "$any" = 1 ]; then
-              zip -r "../../../out/$out" "$@" >/dev/null
-            else
-              echo "Skip $out (no matching dirs: $*)"
-            fi
-          }
+          # TTF bündeln
+          if find iosevka-src/dist -type f -name '*.ttf' | grep -q .; then
+            find iosevka-src/dist -type f -name '*.ttf' -print0 \
+              | xargs -0 zip -j out/IoskeleyMono-TTF.zip
+          else
+            echo "Keine TTF-Dateien gefunden"; exit 1
+          fi
 
-          pack IoskeleyMono-TTF-Hinted.zip TTF
-          pack IoskeleyMono-TTF-Unhinted.zip TTF-Unhinted
-          pack IoskeleyMono-Web.zip WOFF2 WOFF2-Unhinted
+          # WOFF2 bündeln (optional, wenn vorhanden)
+          if find iosevka-src/dist -type f -name '*.woff2' | grep -q .; then
+            find iosevka-src/dist -type f -name '*.woff2' -print0 \
+              | xargs -0 zip -j out/IoskeleyMono-Web.zip
+          else
+            echo "Keine WOFF2-Dateien gefunden (ok, wenn nur Desktop-Fonts gewünscht)"
+          fi
 
-          cd ../../../out
-          ls -la
+          ls -la out
 
-      # >>> Artefakte IMMER hochladen (damit du sie im Run siehst)
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: fonts-${{ github.run_number }}
-          path: iosevka-src/out/*.zip
-          if-no-files-found: warn
+          path: out/*.zip
+          if-no-files-found: error
 
-      # Version / Tag für Release
       - name: Set Release Version
         id: vars
         run: echo "tag=$(date +'%Y.%m.%d')-${{ github.run_number }}" >> $GITHUB_OUTPUT
 
-      # Optional: Release mit Assets erstellen
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.vars.outputs.tag }}
           name: "Release ${{ steps.vars.outputs.tag }}"
           body: |
-            Automated build from
+            Automated build from ${{ github.sha }}.
+            Assets: IoskeleyMono-TTF.zip, IoskeleyMono-Web.zip (falls vorhanden)
+          files: out/*.zip
