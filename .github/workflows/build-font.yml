@@ -39,46 +39,37 @@ jobs:
       - name: Copy custom build plan
         run: cp private-build-plans.toml iosevka-src/
 
-      - name: Install dependencies and build
+      - name: Install deps & build your plan
         working-directory: iosevka-src
         run: |
           npm install
-          # baue NUR deinen Plan (Name ggf. anpassen!)
+          # >>> HIER Plan-Key prüfen! (z.B. IoskeleyMono)
           npm run build -- contents::IoskeleyMono
 
-      # --- WICHTIG: nicht auf feste Ordnernamen verlassen ---
-      - name: Package fonts (zip TTF & WOFF2 found in dist)
+      # --- Debug-Ausgabe: zeig mir, WAS tatsächlich gebaut wurde
+      - name: Show dist tree
         run: |
-          set -euo pipefail
-          mkdir -p out
-
-          echo "Dist tree:"
-          find iosevka-src/dist -maxdepth 3 -type d -print || true
-
-          # TTF bündeln
-          if find iosevka-src/dist -type f -name '*.ttf' | grep -q .; then
-            find iosevka-src/dist -type f -name '*.ttf' -print0 \
-              | xargs -0 zip -j out/IoskeleyMono-TTF.zip
-          else
-            echo "Keine TTF-Dateien gefunden"; exit 1
+          if [ ! -d "iosevka-src/dist" ]; then
+            echo "dist/ existiert nicht -> Build ist fehlgeschlagen"; exit 1
           fi
+          find iosevka-src/dist -maxdepth 3 -type d -print
+          find iosevka-src/dist -type f | head -n 50
 
-          # WOFF2 bündeln (optional, wenn vorhanden)
-          if find iosevka-src/dist -type f -name '*.woff2' | grep -q .; then
-            find iosevka-src/dist -type f -name '*.woff2' -print0 \
-              | xargs -0 zip -j out/IoskeleyMono-Web.zip
-          else
-            echo "Keine WOFF2-Dateien gefunden (ok, wenn nur Desktop-Fonts gewünscht)"
-          fi
-
-          ls -la out
-
-      - name: Upload artifacts
+      # --- Minimal-sicher: ganzen dist/ Ordner als Artifact hochladen
+      - name: Upload dist as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: fonts-${{ github.run_number }}
-          path: out/*.zip
+          name: dist-${{ github.run_number }}
+          path: iosevka-src/dist/**
           if-no-files-found: error
+          retention-days: 14
+
+      # --- Optional: ein einziges ZIP fürs Release (ohne fragile Globs)
+      - name: Pack single zip for release
+        run: |
+          mkdir -p out
+          (cd iosevka-src && zip -r ../out/IoskeleyMono-dist.zip dist)
+          ls -la out
 
       - name: Set Release Version
         id: vars
@@ -91,5 +82,5 @@ jobs:
           name: "Release ${{ steps.vars.outputs.tag }}"
           body: |
             Automated build from ${{ github.sha }}.
-            Assets: IoskeleyMono-TTF.zip, IoskeleyMono-Web.zip (falls vorhanden)
-          files: out/*.zip
+            Enthält den kompletten dist/ Baum (TTF/WOFF2/…).
+          files: out/IoskeleyMono-dist.zip
