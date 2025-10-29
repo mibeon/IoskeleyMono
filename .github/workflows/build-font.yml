@@ -8,18 +8,18 @@ on:
       - ".github/workflows/**"
   workflow_dispatch:
 
+# wichtig: Schreibrecht für Releases/Tags
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
-      # 1. Checkout your repository to get the config file
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Checkout the official Iosevka repository to get the build tools
       - name: Checkout Iosevka source
         uses: actions/checkout@v4
         with:
@@ -27,76 +27,78 @@ jobs:
           path: iosevka-src
           fetch-depth: 1
 
-      # 3. Install system dependencies required by Iosevka
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ttfautohint python3
+          sudo apt-get install -y ttfautohint python3 zip
 
-      # 4. Set up Node.js, which is required by the Iosevka build scripts
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      # 5. Copy your custom build plan into the Iosevka source directory
       - name: Copy custom build plan
         run: cp private-build-plans.toml iosevka-src/
 
-      # 6. Install dependencies and build ALL font formats
-      - name: Install dependencies and build all font formats
+      - name: Install dependencies and build
+        working-directory: iosevka-src
         run: |
-          cd iosevka-src
           npm install
+          # baue NUR deinen Plan
           npm run build -- contents::IoskeleyMono
 
-      # 7. Verify build output exists for all formats
       - name: Verify build output
         run: |
-          if [ ! -d "iosevka-src/dist/IoskeleyMono/TTF" ] || [ ! -d "iosevka-src/dist/IoskeleyMono/WOFF2" ]; then
-            echo "Build output directories (TTF and/or WOFF2) not found!"
-            exit 1
-          fi
-          echo "TTF and WOFF2 build directories verified."
+          test -d "iosevka-src/dist/IoskeleyMono" || (echo "Output missing" && exit 1)
+          ls -la iosevka-src/dist/IoskeleyMono
 
-      # 8. Create separate ZIP archives for Desktop and Web users
-      - name: Package font files into separate archives
+      # Zips robust erzeugen (nur vorhandene Ordner packen)
+      - name: Package font files
         run: |
-          # Navigate into the main output directory
+          set -e
           cd iosevka-src/dist/IoskeleyMono
+          mkdir -p ../../../out
 
-          # Package the Hinted TTF fonts into the workspace root
-          zip -r ../../../IoskeleyMono-TTF-Hinted.zip TTF
+          pack() {
+            local out="$1"; shift
+            local any=0
+            for d in "$@"; do
+              if [ -d "$d" ]; then
+                any=1
+              fi
+            done
+            if [ "$any" = 1 ]; then
+              zip -r "../../../out/$out" "$@" >/dev/null
+            else
+              echo "Skip $out (no matching dirs: $*)"
+            fi
+          }
 
-          # Package the Unhinted TTF fonts into the workspace root
-          zip -r ../../../IoskeleyMono-TTF-Unhinted.zip TTF-Unhinted
+          pack IoskeleyMono-TTF-Hinted.zip TTF
+          pack IoskeleyMono-TTF-Unhinted.zip TTF-Unhinted
+          pack IoskeleyMono-Web.zip WOFF2 WOFF2-Unhinted
 
-          # Package all WOFF2 fonts into the workspace root
-          zip -r ../../../IoskeleyMono-Web.zip WOFF2 WOFF2-Unhinted
+          cd ../../../out
+          ls -la
 
-      # 9. Set the release version number
+      # >>> Artefakte IMMER hochladen (damit du sie im Run siehst)
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fonts-${{ github.run_number }}
+          path: iosevka-src/out/*.zip
+          if-no-files-found: warn
+
+      # Version / Tag für Release
       - name: Set Release Version
         id: vars
         run: echo "tag=$(date +'%Y.%m.%d')-${{ github.run_number }}" >> $GITHUB_OUTPUT
 
-      # 10. Create a new GitHub Release and upload all three ZIP files
-      - name: Create Release and Upload Assets
-        uses: softprops/action-gh-release@v1
+      # Optional: Release mit Assets erstellen
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.vars.outputs.tag }}
           name: "Release ${{ steps.vars.outputs.tag }}"
           body: |
-            Automated build triggered by commit ${{ github.sha }}.
-
-            **For Desktop Users:**
-            - `IoskeleyMono-TTF-Hinted.zip`: Fonts with hinting. Best for most users on standard-resolution screens.
-            - `IoskeleyMono-TTF-Unhinted.zip`: Raw fonts without hinting. Preferred by some on high-DPI screens.
-
-            **For Web Developers:**
-            - `IoskeleyMono-Web.zip`: Contains all WOFF2 font files for web use (Hinted and Unhinted).
-          files: |
-            IoskeleyMono-TTF-Hinted.zip
-            IoskeleyMono-TTF-Unhinted.zip
-            IoskeleyMono-Web.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            Automated build from
