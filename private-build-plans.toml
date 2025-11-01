@@ -1,4 +1,4 @@
-[buildPlans.MibeonMono]
+[buildPlans.IoskeleyMono]
 family = "Ioskeley Mono"
 spacing = "normal"
 serifs = "sans"
@@ -6,7 +6,7 @@ noCvSs = true
 exportGlyphNames = false
 noLigation = true
 
-[buildPlans.MibeonMono.variants.design]
+[buildPlans.IoskeleyMono.variants.design]
 one = "no-base"
 two = "straight-neck-serifless"
 three = "flat-top-serifless"
@@ -101,7 +101,7 @@ lig-plus-chain = "without-notch"
 lig-double-arrow-bar = "without-notch"
 lig-single-arrow-bar = "without-notch"
 
-[buildPlans.MibeonMono.variants.italic]
+[buildPlans.IoskeleyMono.variants.italic]
 one = "no-base"
 two = "straight-neck-serifless"
 three = "flat-top-serifless"
@@ -205,65 +205,65 @@ lig-plus-chain = "without-notch"
 lig-double-arrow-bar = "without-notch"
 lig-single-arrow-bar = "without-notch"
 
-[buildPlans.MibeonMono.weights.Regular]
+[buildPlans.IoskeleyMono.weights.Regular]
 shape = 400
 menu = 400
 css = 400
 
-[buildPlans.MibeonMono.weights.Bold]
+[buildPlans.IoskeleyMono.weights.Bold]
 shape = 700
 menu = 700
 css = 700
 
-[buildPlans.MibeonMono.weights.Light]
+[buildPlans.IoskeleyMono.weights.Light]
 shape = 300
 menu = 300
 css = 300
 
-[buildPlans.MibeonMono.weights.Medium]
+[buildPlans.IoskeleyMono.weights.Medium]
 shape = 500
 menu = 500
 css = 500
 
-[buildPlans.MibeonMono.weights.SemiBold]
+[buildPlans.IoskeleyMono.weights.SemiBold]
 shape = 600
 menu = 600
 css = 600
 
-[buildPlans.MibeonMono.weights.ExtraBold]
+[buildPlans.IoskeleyMono.weights.ExtraBold]
 shape = 800
 menu = 800
 css = 800
 
-[buildPlans.MibeonMono.widths.Normal]
+[buildPlans.IoskeleyMono.widths.Normal]
 shape = 600
 menu = 5
 css = "normal"
 
-[buildPlans.MibeonMono.widths.SemiExtended]
+[buildPlans.IoskeleyMono.widths.SemiExtended]
 shape = 658
 menu = 6
 css = "semi-expanded"
 
-[buildPlans.MibeonMono.widths.Extended]
+[buildPlans.IoskeleyMono.widths.Extended]
 shape = 720
 menu = 7
 css = "expanded"
 
 
-[buildPlans.MibeonMono.slopes.Upright]
+[buildPlans.IoskeleyMono.slopes.Upright]
 angle = 0
 shape = "upright"
 menu = "upright"
 css = "normal"
 
-[buildPlans.MibeonMono.slopes.Italic]
+[buildPlans.IoskeleyMono.slopes.Italic]
 angle = 11.8
 shape = "italic"
 menu = "italic"
 css = "italic"
 
-[buildPlans.MibeonMono.metricOverride]
+[buildPlans.IoskeleyMono.metricOverride]
 xHeight = 520
 cap = 690
 ascender = 740
